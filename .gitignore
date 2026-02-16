@@ -1,0 +1,15 @@
+# Next.js
+.next/
+out/
+
+# Dependencies
+node_modules/
+
+# Vercel
+.vercel/
+
+# macOS
+.DS_Store
+
+# Build output
+next-env.d.ts
