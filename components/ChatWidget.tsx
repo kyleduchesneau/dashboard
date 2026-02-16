@@ -71,15 +71,26 @@ export default function ChatWidget() {
 
   return (
     <>
-      {/* Trigger — renders inline wherever the component is placed */}
-      <button
-        onClick={() => setIsOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 px-3 py-1.5 text-sm font-medium text-white transition-colors"
-        aria-label="Toggle chat"
-      >
-        <span>💬</span>
-        <span>Ask the data (AI)</span>
-      </button>
+      {/* Trigger + tooltip */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setIsOpen((o) => !o)}
+          className="flex items-center gap-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 px-3 py-1.5 text-sm font-medium text-white transition-colors"
+          aria-label="Toggle chat"
+        >
+          <span>💬</span>
+          <span>Ask Your Data</span>
+        </button>
+
+        <div className="relative group">
+          <span className="flex items-center justify-center w-5 h-5 rounded-full border border-slate-500 text-slate-400 hover:text-white hover:border-slate-300 text-xs font-bold cursor-help transition-colors select-none">
+            ?
+          </span>
+          <div className="absolute right-0 top-7 z-50 w-64 rounded-lg bg-slate-800 border border-slate-700 px-3 py-2.5 text-xs text-slate-300 leading-relaxed shadow-xl hidden group-hover:block">
+            Your CRM data — accounts, contacts, leads, and opportunities — is sent to Claude, an AI model by Anthropic. Claude reads the full dataset and answers your question in plain language, without storing or learning from your data.
+          </div>
+        </div>
+      </div>
 
       {/* Panel — fixed overlay, drops below the header */}
       {isOpen && (
