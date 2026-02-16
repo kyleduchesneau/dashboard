@@ -1,6 +1,17 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Fragment } from "react";
+
+function BoldText({ text }: { text: string }) {
+  const parts = text.split(/\*\*(.+?)\*\*/g);
+  return (
+    <>
+      {parts.map((part, i) =>
+        i % 2 === 1 ? <strong key={i}>{part}</strong> : <Fragment key={i}>{part}</Fragment>
+      )}
+    </>
+  );
+}
 
 interface Message {
   role: "user" | "assistant";
@@ -116,13 +127,17 @@ export default function ChatWidget() {
                 className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap ${
+                  className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
                     m.role === "user"
                       ? "bg-indigo-600 text-white rounded-br-sm"
                       : "bg-slate-100 text-slate-800 rounded-bl-sm"
                   }`}
                 >
-                  {m.content}
+                  {m.content.split("\n").map((line, j) => (
+                    <span key={j} className="block">
+                      <BoldText text={line} />
+                    </span>
+                  ))}
                 </div>
               </div>
             ))}
