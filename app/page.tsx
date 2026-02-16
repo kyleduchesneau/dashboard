@@ -3,6 +3,7 @@ import KPICard from "@/components/KPICard";
 import RevenueChart from "@/components/RevenueChart";
 import LeadStatusChart from "@/components/LeadStatusChart";
 import OpportunitiesTable from "@/components/OpportunitiesTable";
+import ChatWidget from "@/components/ChatWidget";
 
 export default function DashboardPage() {
   const data = getDashboardData();
@@ -24,13 +25,16 @@ export default function DashboardPage() {
             CRM overview &mdash; {data.totalAccounts} accounts
           </p>
         </div>
-        <span className="text-xs text-slate-500 font-mono">
-          {new Date().toLocaleDateString("en-US", {
-            month: "long",
-            day: "numeric",
-            year: "numeric",
-          })}
-        </span>
+        <div className="flex items-center gap-4">
+          <span className="text-xs text-slate-500 font-mono">
+            {new Date().toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            })}
+          </span>
+          <ChatWidget />
+        </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">

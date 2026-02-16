@@ -8,6 +8,9 @@ node_modules/
 # Vercel
 .vercel/
 
+# Env
+.env*.local
+
 # macOS
 .DS_Store
 

@@ -133,3 +133,43 @@ export function getDashboardData(): DashboardData {
     recentOpportunities: parsedOpportunities.slice(0, 10),
   };
 }
+
+export function getAIContext(): string {
+  const accounts = readCSV("Accounts.csv");
+  const contacts = readCSV("Contacts.csv");
+  const leads = readCSV("Leads.csv");
+  const opportunities = readCSV("Opportunites.csv");
+
+  const oppLines = opportunities
+    .map((r) => {
+      const amount = parseFloat((r["Amount"] || "0").replace(/[$,\s]/g, ""));
+      return `${r["Oppurtunity Name"] || r["Project Name"]} | ${r["Stage"]} | $${Math.round(amount).toLocaleString()} | closes ${r["Close Date"]}`;
+    })
+    .join("\n");
+
+  const leadLines = leads
+    .map((r) => `${r["First Name"]} ${r["Last Name"]}, ${r["Company"]}, ${r["Lead Status"]}`)
+    .join("\n");
+
+  const accountLines = accounts
+    .map((r) => `${r["Company Name"]}, ${r["City"]}, ${r["State"]}`)
+    .join("\n");
+
+  const contactLines = contacts
+    .map((r) => `${r["first_name"]} ${r["last_name"]} <${r["email"]}>`)
+    .join("\n");
+
+  return `You are a data assistant for a CRM sales dashboard. Answer questions concisely using only the data below. If something isn't in the data, say so.
+
+OPPORTUNITIES (name | stage | amount | close date):
+${oppLines}
+
+LEADS (name, company, status):
+${leadLines}
+
+ACCOUNTS (company, city, state):
+${accountLines}
+
+CONTACTS (name, email):
+${contactLines}`;
+}
