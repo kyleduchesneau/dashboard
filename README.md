@@ -1,5 +1,7 @@
 # Sales Dashboard
 
+**Live demo:** https://dashboard-test-iwquwombm-kyles-projects-da98b006.vercel.app/
+
 A CRM sales dashboard built with Next.js, Tailwind CSS, and Recharts. Reads dummy data from local CSV files and renders key metrics, charts, and a recent opportunities table.
 
 ## Data
