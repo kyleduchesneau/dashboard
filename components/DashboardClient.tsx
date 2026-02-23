@@ -78,7 +78,12 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
       .map(([, entry]) => entry);
   }, [filteredOpps]);
 
-  const activeStages = data.stages.filter((s) => selectedStages.has(s));
+  const activeStages = useMemo(() => {
+    const revenueMap = new Map(revenueByStage.map((r) => [r.stage, r.revenue]));
+    return data.stages
+      .filter((s) => selectedStages.has(s))
+      .sort((a, b) => (revenueMap.get(b) ?? 0) - (revenueMap.get(a) ?? 0));
+  }, [data.stages, selectedStages, revenueByStage]);
   const isFiltered = selectedStages.size !== data.stages.length;
 
   const filteredRevenueFormatted = new Intl.NumberFormat("en-US", {
@@ -101,14 +106,14 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
         <div ref={filterRef} className="relative">
           <button
             onClick={() => setFilterOpen((o) => !o)}
-            className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border transition-colors bg-purple-900 border-purple-800 text-white hover:bg-purple-800"
+            className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border transition-colors bg-blue-700 border-blue-600 text-white hover:bg-blue-600"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h18M7 8h10M11 12h2" />
             </svg>
             <span>Stages</span>
             <span
-              className="text-xs rounded-full px-1.5 py-0.5 font-medium bg-purple-700 text-purple-100"
+              className="text-xs rounded-full px-1.5 py-0.5 font-medium bg-blue-600 text-blue-100"
             >
               {selectedStages.size} / {data.stages.length}
             </span>
