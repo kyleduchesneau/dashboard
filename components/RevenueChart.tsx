@@ -1,8 +1,8 @@
 "use client";
 
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -44,8 +44,8 @@ export default function RevenueChart({
         Revenue Over Time
       </h2>
       <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={data} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+        <BarChart data={data} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
           <XAxis
             dataKey="month"
             tick={{ fontSize: 11, fill: "#64748b" }}
@@ -62,6 +62,7 @@ export default function RevenueChart({
               name,
             ]}
             contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}
+            cursor={{ fill: "#f8fafc" }}
           />
           <Legend
             formatter={(value) => (
@@ -69,17 +70,15 @@ export default function RevenueChart({
             )}
           />
           {stages.map((stage, i) => (
-            <Line
+            <Bar
               key={stage}
-              type="monotone"
               dataKey={stage}
-              stroke={STAGE_COLORS[stage] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length]}
-              strokeWidth={2}
-              dot={false}
-              connectNulls
+              stackId="stack"
+              fill={STAGE_COLORS[stage] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length]}
+              radius={i === stages.length - 1 ? [3, 3, 0, 0] : undefined}
             />
           ))}
-        </LineChart>
+        </BarChart>
       </ResponsiveContainer>
     </div>
   );
