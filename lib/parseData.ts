@@ -140,11 +140,34 @@ export function getAIContext(): string {
   const leads = readCSV("Leads.csv");
   const opportunities = readCSV("Opportunites.csv");
 
-  const oppLines = opportunities
-    .map((r) => {
-      const amount = parseFloat((r["Amount"] || "0").replace(/[$,\s]/g, ""));
-      return `${r["Oppurtunity Name"] || r["Project Name"]} | ${r["Stage"]} | $${Math.round(amount).toLocaleString()} | closes ${r["Close Date"]}`;
-    })
+  // Pre-compute aggregates using the same logic as the dashboard charts
+  const parsedOpportunities = opportunities.map((r) => ({
+    name: r["Oppurtunity Name"] || r["Project Name"] || "",
+    stage: r["Stage"] || "",
+    amount: parseFloat((r["Amount"] || "0").replace(/[$,\s]/g, "")),
+    closeDate: r["Close Date"] || "",
+  }));
+
+  const stageMap = new Map<string, number>();
+  parsedOpportunities.forEach((op) => {
+    stageMap.set(op.stage, (stageMap.get(op.stage) || 0) + op.amount);
+  });
+  const stageSummaryLines = Array.from(stageMap.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([stage, total]) => `  ${stage}: $${Math.round(total).toLocaleString()}`)
+    .join("\n");
+
+  const statusMap = new Map<string, number>();
+  leads.forEach((r) => {
+    const s = (r["Lead Status"] || "Unknown").trim();
+    statusMap.set(s, (statusMap.get(s) || 0) + 1);
+  });
+  const leadSummaryLines = Array.from(statusMap.entries())
+    .map(([status, count]) => `  ${status}: ${count}`)
+    .join("\n");
+
+  const oppLines = parsedOpportunities
+    .map((op) => `${op.name} | ${op.stage} | $${Math.round(op.amount).toLocaleString()} | closes ${op.closeDate}`)
     .join("\n");
 
   const leadLines = leads
@@ -160,6 +183,22 @@ export function getAIContext(): string {
     .join("\n");
 
   return `You are a data assistant for a CRM sales dashboard. Answer questions concisely using only the data below. If something isn't in the data, say so.
+
+IMPORTANT: For any aggregate questions (totals, counts, averages), use the PRE-COMPUTED SUMMARIES below — do not manually sum individual rows, as rounding in the display values will produce incorrect results.
+
+PRE-COMPUTED SUMMARIES:
+Revenue by stage (exact totals):
+${stageSummaryLines}
+
+Lead count by status:
+${leadSummaryLines}
+
+Total accounts: ${accounts.length}
+Total contacts: ${contacts.length}
+Total leads: ${leads.length}
+Total opportunities: ${parsedOpportunities.length}
+
+RAW DATA (for lookups and specific record questions):
 
 OPPORTUNITIES (name | stage | amount | close date):
 ${oppLines}

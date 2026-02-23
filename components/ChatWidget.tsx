@@ -95,7 +95,7 @@ export default function ChatWidget() {
       {/* Panel — fixed overlay, drops below the header */}
       {isOpen && (
         <div
-          className="fixed top-16 right-6 z-50 w-80 sm:w-96 flex flex-col rounded-xl shadow-2xl border border-slate-200 bg-white overflow-hidden"
+          className="fixed top-16 right-6 z-50 w-[640px] max-w-[calc(100vw-3rem)] flex flex-col rounded-xl shadow-2xl border border-slate-200 bg-white overflow-hidden"
           style={{ height: "480px" }}
         >
           {/* Panel header */}
@@ -144,11 +144,15 @@ export default function ChatWidget() {
                       : "bg-slate-100 text-slate-800 rounded-bl-sm"
                   }`}
                 >
-                  {m.content.split("\n").map((line, j) => (
-                    <span key={j} className="block">
-                      <BoldText text={line} />
-                    </span>
-                  ))}
+                  {m.content.split("\n").map((line, j) =>
+                    line === "" ? (
+                      <div key={j} className="h-2" />
+                    ) : (
+                      <p key={j} className="mb-1.5 last:mb-0">
+                        <BoldText text={line} />
+                      </p>
+                    )
+                  )}
                 </div>
               </div>
             ))}
