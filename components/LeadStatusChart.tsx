@@ -8,16 +8,26 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import type { LeadStatusCount } from "@/lib/parseData";
 
-const COLORS: Record<string, string> = {
-  New: "#6366f1",
-  Working: "#22c55e",
-  Qualified: "#f59e0b",
-  Unqualified: "#ef4444",
+const STAGE_COLORS: Record<string, string> = {
+  "Closed Won": "#22c55e",
+  "Closed Lost": "#ef4444",
+  "Finalize/Negotiate": "#6366f1",
+  Specification: "#3b82f6",
+  "Estimate/Quote": "#f59e0b",
+  Discovery: "#8b5cf6",
+  Introduction: "#64748b",
 };
 
-const DEFAULT_COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6"];
+const DEFAULT_COLORS = [
+  "#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#64748b", "#ec4899",
+];
+
+function formatMillions(value: number) {
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K`;
+  return `$${value}`;
+}
 
 const CustomTooltip = ({
   active,
@@ -26,11 +36,11 @@ const CustomTooltip = ({
   active?: boolean;
   payload?: { name: string; value: number }[];
 }) => {
-  if (active && payload && payload.length) {
+  if (active && payload?.length) {
     return (
       <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-lg text-sm">
         <p className="font-semibold text-slate-700">{payload[0].name}</p>
-        <p className="text-slate-600">{payload[0].value} leads</p>
+        <p className="text-slate-600">{formatMillions(payload[0].value)}</p>
       </div>
     );
   }
@@ -40,19 +50,19 @@ const CustomTooltip = ({
 export default function LeadStatusChart({
   data,
 }: {
-  data: LeadStatusCount[];
+  data: { stage: string; revenue: number }[];
 }) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-5">
       <h2 className="text-base font-semibold text-slate-700 mb-4">
-        Lead Status
+        Revenue by Stage
       </h2>
       <ResponsiveContainer width="100%" height={300}>
         <PieChart>
           <Pie
             data={data}
-            dataKey="count"
-            nameKey="status"
+            dataKey="revenue"
+            nameKey="stage"
             cx="50%"
             cy="45%"
             outerRadius={100}
@@ -61,8 +71,8 @@ export default function LeadStatusChart({
           >
             {data.map((entry, index) => (
               <Cell
-                key={entry.status}
-                fill={COLORS[entry.status] ?? DEFAULT_COLORS[index % DEFAULT_COLORS.length]}
+                key={entry.stage}
+                fill={STAGE_COLORS[entry.stage] ?? DEFAULT_COLORS[index % DEFAULT_COLORS.length]}
               />
             ))}
           </Pie>

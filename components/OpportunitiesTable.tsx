@@ -18,7 +18,7 @@ export default function OpportunitiesTable({
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-5">
       <h2 className="text-base font-semibold text-slate-700 mb-4">
-        Recent Opportunities
+        Opportunities
       </h2>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">

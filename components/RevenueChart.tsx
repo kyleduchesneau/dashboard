@@ -1,15 +1,29 @@
 "use client";
 
 import {
-  BarChart,
-  Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
 } from "recharts";
-import type { RevenueByStage } from "@/lib/parseData";
+
+const STAGE_COLORS: Record<string, string> = {
+  "Closed Won": "#22c55e",
+  "Closed Lost": "#ef4444",
+  "Finalize/Negotiate": "#6366f1",
+  Specification: "#3b82f6",
+  "Estimate/Quote": "#f59e0b",
+  Discovery: "#8b5cf6",
+  Introduction: "#64748b",
+};
+
+const FALLBACK_COLORS = [
+  "#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#64748b", "#ec4899",
+];
 
 function formatMillions(value: number) {
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
@@ -17,55 +31,55 @@ function formatMillions(value: number) {
   return `$${value}`;
 }
 
-const CustomTooltip = ({
-  active,
-  payload,
-  label,
+export default function RevenueChart({
+  data,
+  stages,
 }: {
-  active?: boolean;
-  payload?: { value: number }[];
-  label?: string;
-}) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-lg text-sm">
-        <p className="font-semibold text-slate-700">{label}</p>
-        <p className="text-indigo-600 font-bold">
-          ${payload[0].value.toLocaleString()}
-        </p>
-      </div>
-    );
-  }
-  return null;
-};
-
-export default function RevenueChart({ data }: { data: RevenueByStage[] }) {
+  data: Record<string, number | string>[];
+  stages: string[];
+}) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-5">
       <h2 className="text-base font-semibold text-slate-700 mb-4">
-        Revenue by Stage
+        Revenue Over Time
       </h2>
       <ResponsiveContainer width="100%" height={300}>
-        <BarChart
-          data={data}
-          margin={{ top: 4, right: 8, left: 8, bottom: 60 }}
-        >
+        <LineChart data={data} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
           <XAxis
-            dataKey="stage"
+            dataKey="month"
             tick={{ fontSize: 11, fill: "#64748b" }}
-            angle={-35}
-            textAnchor="end"
-            interval={0}
+            interval="preserveStartEnd"
           />
           <YAxis
             tickFormatter={formatMillions}
             tick={{ fontSize: 11, fill: "#64748b" }}
             width={60}
           />
-          <Tooltip content={<CustomTooltip />} />
-          <Bar dataKey="revenue" fill="#6366f1" radius={[4, 4, 0, 0]} />
-        </BarChart>
+          <Tooltip
+            formatter={(value: number, name: string) => [
+              `$${value.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
+              name,
+            ]}
+            contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}
+          />
+          <Legend
+            formatter={(value) => (
+              <span className="text-xs text-slate-600">{value}</span>
+            )}
+          />
+          {stages.map((stage, i) => (
+            <Line
+              key={stage}
+              type="monotone"
+              dataKey={stage}
+              stroke={STAGE_COLORS[stage] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length]}
+              strokeWidth={2}
+              dot={false}
+              connectNulls
+            />
+          ))}
+        </LineChart>
       </ResponsiveContainer>
     </div>
   );
