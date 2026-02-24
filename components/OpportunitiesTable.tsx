@@ -5,6 +5,9 @@ import type { Opportunity } from "@/lib/parseData";
 
 const PAGE_SIZE = 25;
 
+type SortKey = "amount" | "closeDate";
+type SortDir = "asc" | "desc";
+
 const stageBadge: Record<string, string> = {
   "Closed Won": "bg-green-100 text-green-700",
   "Closed Lost": "bg-red-100 text-red-700",
@@ -14,6 +17,33 @@ const stageBadge: Record<string, string> = {
   Discovery: "bg-purple-100 text-purple-700",
   Introduction: "bg-slate-100 text-slate-600",
 };
+
+function parseDateNum(dateStr: string): number {
+  const [m, d, y] = dateStr.split("/").map(Number);
+  const fullYear = y < 100 ? 2000 + y : y;
+  return fullYear * 10000 + m * 100 + (d || 0);
+}
+
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+  return (
+    <span className={`inline-flex flex-col ml-1 leading-none ${active ? "text-indigo-600" : "text-slate-300"}`}>
+      <svg
+        viewBox="0 0 10 6"
+        className={`w-2.5 h-1.5 ${active && dir === "asc" ? "text-indigo-600" : "text-slate-300"}`}
+        fill="currentColor"
+      >
+        <path d="M5 0l5 6H0z" />
+      </svg>
+      <svg
+        viewBox="0 0 10 6"
+        className={`w-2.5 h-1.5 ${active && dir === "desc" ? "text-indigo-600" : "text-slate-300"}`}
+        fill="currentColor"
+      >
+        <path d="M5 6L0 0h10z" />
+      </svg>
+    </span>
+  );
+}
 
 function PageControls({
   currentPage,
@@ -34,7 +64,6 @@ function PageControls({
   onNext: () => void;
   onPage: (p: number) => void;
 }) {
-  // Build page number list: always show first, last, current ±1, with ellipsis
   const pages: (number | "…")[] = [];
   const range = new Set([1, totalPages, currentPage, currentPage - 1, currentPage + 1].filter((p) => p >= 1 && p <= totalPages));
   const sorted = Array.from(range).sort((a, b) => a - b);
@@ -94,27 +123,41 @@ export default function OpportunitiesTable({
 }) {
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
-  // Reset to page 1 when the parent filter changes the opportunity set
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [opportunities]);
+  useEffect(() => { setCurrentPage(1); }, [opportunities]);
+  useEffect(() => { setCurrentPage(1); }, [search]);
+  useEffect(() => { setCurrentPage(1); }, [sortKey, sortDir]);
 
-  // Also reset to page 1 when search changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search]);
+  function handleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return opportunities;
-    return opportunities.filter(
-      (op) =>
-        op.opportunityName.toLowerCase().includes(q) ||
-        op.stage.toLowerCase().includes(q) ||
-        op.closeDate.toLowerCase().includes(q)
-    );
-  }, [opportunities, search]);
+    const base = q
+      ? opportunities.filter(
+          (op) =>
+            op.opportunityName.toLowerCase().includes(q) ||
+            op.stage.toLowerCase().includes(q) ||
+            op.closeDate.toLowerCase().includes(q)
+        )
+      : opportunities;
+
+    if (!sortKey) return base;
+
+    return [...base].sort((a, b) => {
+      const mul = sortDir === "asc" ? 1 : -1;
+      if (sortKey === "amount") return (a.amount - b.amount) * mul;
+      return (parseDateNum(a.closeDate) - parseDateNum(b.closeDate)) * mul;
+    });
+  }, [opportunities, search, sortKey, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -157,8 +200,24 @@ export default function OpportunitiesTable({
             <tr className="border-b border-slate-100">
               <th className="text-left py-2 px-3 text-slate-500 font-medium">Opportunity</th>
               <th className="text-left py-2 px-3 text-slate-500 font-medium">Stage</th>
-              <th className="text-right py-2 px-3 text-slate-500 font-medium">Amount</th>
-              <th className="text-right py-2 px-3 text-slate-500 font-medium">Close Date</th>
+              <th className="text-right py-2 px-3 text-slate-500 font-medium">
+                <button
+                  onClick={() => handleSort("amount")}
+                  className="inline-flex items-center gap-0.5 hover:text-slate-700 transition-colors"
+                >
+                  Amount
+                  <SortIcon active={sortKey === "amount"} dir={sortDir} />
+                </button>
+              </th>
+              <th className="text-right py-2 px-3 text-slate-500 font-medium">
+                <button
+                  onClick={() => handleSort("closeDate")}
+                  className="inline-flex items-center gap-0.5 hover:text-slate-700 transition-colors"
+                >
+                  Close Date
+                  <SortIcon active={sortKey === "closeDate"} dir={sortDir} />
+                </button>
+              </th>
             </tr>
           </thead>
           <tbody>

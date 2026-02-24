@@ -14,6 +14,7 @@ const STAGE_ORDER = [
   "Introduction",
   "Discovery",
   "Specification",
+  "Estimate/Quote",
   "Finalize/Negotiate",
   "Closed Won",
   "Closed Lost",
@@ -86,21 +87,44 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
   }, [filteredOpps, clickedStage]);
 
   const cumulativeData = useMemo(() => {
-    const monthTotals = new Map<string, { sort: number; amount: number }>();
-    lineChartOpps.forEach((op) => {
-      const parsed = parseMonthKey(op.closeDate);
-      if (!parsed) return;
-      const { label, sort } = parsed;
-      if (!monthTotals.has(label)) monthTotals.set(label, { sort, amount: 0 });
-      monthTotals.get(label)!.amount += op.amount;
-    });
-    const sorted = Array.from(monthTotals.entries()).sort(
-      ([, a], [, b]) => a.sort - b.sort
-    );
-    let cumulative = 0;
-    return sorted.map(([label, { amount }]) => {
-      cumulative += amount;
-      return { month: label, cumulative: Math.round(cumulative) };
+    const monthSorts = new Map<string, number>();
+
+    const pipelineMonths = new Map<string, number>();
+    lineChartOpps
+      .filter((op) => op.stage !== "Closed Lost" && op.stage !== "Closed Won")
+      .forEach((op) => {
+        const parsed = parseMonthKey(op.closeDate);
+        if (!parsed) return;
+        const { label, sort } = parsed;
+        monthSorts.set(label, sort);
+        pipelineMonths.set(label, (pipelineMonths.get(label) ?? 0) + op.amount);
+      });
+
+    const wonMonths = new Map<string, number>();
+    lineChartOpps
+      .filter((op) => op.stage === "Closed Won")
+      .forEach((op) => {
+        const parsed = parseMonthKey(op.closeDate);
+        if (!parsed) return;
+        const { label, sort } = parsed;
+        monthSorts.set(label, sort);
+        wonMonths.set(label, (wonMonths.get(label) ?? 0) + op.amount);
+      });
+
+    const sortedMonths = Array.from(monthSorts.entries())
+      .sort(([, a], [, b]) => a - b)
+      .map(([label]) => label);
+
+    let pipelineCumulative = 0;
+    let wonCumulative = 0;
+    return sortedMonths.map((label) => {
+      pipelineCumulative += pipelineMonths.get(label) ?? 0;
+      wonCumulative += wonMonths.get(label) ?? 0;
+      return {
+        month: label,
+        pipeline: Math.round(pipelineCumulative),
+        closedWon: Math.round(wonCumulative),
+      };
     });
   }, [lineChartOpps]);
 

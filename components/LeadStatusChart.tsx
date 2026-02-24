@@ -13,6 +13,7 @@ const STAGE_COLORS: Record<string, string> = {
   "Closed Won": "#22c55e",
   "Closed Lost": "#ef4444",
   "Finalize/Negotiate": "#6366f1",
+  "Estimate/Quote": "#f59e0b",
   Specification: "#3b82f6",
   Discovery: "#8b5cf6",
   Introduction: "#64748b",
@@ -74,6 +75,43 @@ export default function LeadStatusChart({
             innerRadius={50}
             paddingAngle={3}
             style={{ cursor: "pointer" }}
+            labelLine={false}
+            label={({
+              cx,
+              cy,
+              midAngle,
+              innerRadius,
+              outerRadius,
+              value,
+              percent,
+            }: {
+              cx: number;
+              cy: number;
+              midAngle: number;
+              innerRadius: number;
+              outerRadius: number;
+              value: number;
+              percent: number;
+            }) => {
+              if (percent < 0.06) return null;
+              const RADIAN = Math.PI / 180;
+              const radius = innerRadius + (outerRadius - innerRadius) * 0.55;
+              const x = cx + radius * Math.cos(-midAngle * RADIAN);
+              const y = cy + radius * Math.sin(-midAngle * RADIAN);
+              return (
+                <text
+                  x={x}
+                  y={y}
+                  fill="white"
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fontSize={10}
+                  fontWeight={600}
+                >
+                  {formatMillions(value)}
+                </text>
+              );
+            }}
             onClick={(entry) => {
               const stage = entry?.stage as string | undefined;
               if (stage) onStageClick(stage === selectedStage ? null : stage);

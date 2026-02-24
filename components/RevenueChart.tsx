@@ -9,12 +9,14 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
+  LabelList,
 } from "recharts";
 
 const STAGE_COLORS: Record<string, string> = {
   "Closed Won": "#22c55e",
   "Closed Lost": "#ef4444",
   "Finalize/Negotiate": "#6366f1",
+  "Estimate/Quote": "#f59e0b",
   Specification: "#3b82f6",
   Discovery: "#8b5cf6",
   Introduction: "#64748b",
@@ -46,7 +48,7 @@ export default function RevenueChart({
         <BarChart
           data={data}
           layout="vertical"
-          margin={{ top: 4, right: 48, left: 0, bottom: 0 }}
+          margin={{ top: 4, right: 56, left: 0, bottom: 0 }}
           onClick={(e) => {
             const stage = e?.activePayload?.[0]?.payload?.stage;
             if (stage) onStageClick(stage === selectedStage ? null : stage);
@@ -74,6 +76,12 @@ export default function RevenueChart({
             cursor={{ fill: "#f8fafc" }}
           />
           <Bar dataKey="revenue" radius={[0, 3, 3, 0]}>
+            <LabelList
+              dataKey="revenue"
+              position="right"
+              formatter={(v: number) => formatMillions(v)}
+              style={{ fontSize: 11, fill: "#64748b" }}
+            />
             {data.map((entry) => (
               <Cell
                 key={entry.stage}
