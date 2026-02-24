@@ -14,7 +14,6 @@ const STAGE_COLORS: Record<string, string> = {
   "Closed Lost": "#ef4444",
   "Finalize/Negotiate": "#6366f1",
   Specification: "#3b82f6",
-  "Estimate/Quote": "#f59e0b",
   Discovery: "#8b5cf6",
   Introduction: "#64748b",
 };
@@ -49,9 +48,15 @@ const CustomTooltip = ({
 
 export default function LeadStatusChart({
   data,
+  selectedStage,
+  onStageClick,
 }: {
   data: { stage: string; revenue: number }[];
+  selectedStage?: string | null;
+  onStageClick: (stage: string | null) => void;
 }) {
+  const hasFilter = !!selectedStage;
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-5">
       <h2 className="text-base font-semibold text-slate-700 mb-4">
@@ -68,11 +73,17 @@ export default function LeadStatusChart({
             outerRadius={100}
             innerRadius={50}
             paddingAngle={3}
+            style={{ cursor: "pointer" }}
+            onClick={(entry) => {
+              const stage = entry?.stage as string | undefined;
+              if (stage) onStageClick(stage === selectedStage ? null : stage);
+            }}
           >
             {data.map((entry, index) => (
               <Cell
                 key={entry.stage}
                 fill={STAGE_COLORS[entry.stage] ?? DEFAULT_COLORS[index % DEFAULT_COLORS.length]}
+                opacity={hasFilter && selectedStage !== entry.stage ? 0.25 : 1}
               />
             ))}
           </Pie>

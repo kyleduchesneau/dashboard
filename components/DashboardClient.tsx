@@ -3,11 +3,21 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import KPICard from "./KPICard";
 import RevenueChart from "./RevenueChart";
+import CumulativeLineChart from "./CumulativeLineChart";
 import LeadStatusChart from "./LeadStatusChart";
 import OpportunitiesTable from "./OpportunitiesTable";
 import type { DashboardData } from "@/lib/parseData";
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+const STAGE_ORDER = [
+  "Introduction",
+  "Discovery",
+  "Specification",
+  "Finalize/Negotiate",
+  "Closed Won",
+  "Closed Lost",
+];
 
 function parseMonthKey(dateStr: string): { label: string; sort: number } | null {
   const parts = dateStr.split("/");
@@ -27,6 +37,8 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
     () => new Set(data.stages)
   );
   const [filterOpen, setFilterOpen] = useState(false);
+  const [clickedStage, setClickedStage] = useState<string | null>(null);
+  const [clickedMonth, setClickedMonth] = useState<string | null>(null);
   const filterRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -39,52 +51,76 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
+  // Base filter: dropdown stage selection
   const filteredOpps = useMemo(
     () => data.allOpportunities.filter((op) => selectedStages.has(op.stage)),
     [data.allOpportunities, selectedStages]
   );
 
-  const filteredRevenue = useMemo(
-    () => filteredOpps.reduce((sum, op) => sum + op.amount, 0),
-    [filteredOpps]
-  );
+  // Stage chart data: filtered by clicked month (so bar & donut update on month click)
+  const stageChartOpps = useMemo(() => {
+    if (!clickedMonth) return filteredOpps;
+    return filteredOpps.filter((op) => parseMonthKey(op.closeDate)?.label === clickedMonth);
+  }, [filteredOpps, clickedMonth]);
 
-  const revenueByStage = useMemo(() => {
+  const stageData = useMemo(() => {
     const map = new Map<string, number>();
-    filteredOpps.forEach((op) => {
+    stageChartOpps.forEach((op) => {
       map.set(op.stage, (map.get(op.stage) || 0) + op.amount);
     });
-    return data.stages
-      .filter((s) => map.has(s))
-      .map((stage) => ({ stage, revenue: Math.round(map.get(stage)!) }));
-  }, [filteredOpps, data.stages]);
+    const ordered = STAGE_ORDER.filter((s) => map.has(s)).map((stage) => ({
+      stage,
+      revenue: Math.round(map.get(stage)!),
+    }));
+    // append any stages not in STAGE_ORDER
+    const extra = Array.from(map.entries())
+      .filter(([s]) => !STAGE_ORDER.includes(s))
+      .map(([stage, revenue]) => ({ stage, revenue: Math.round(revenue) }));
+    return [...ordered, ...extra];
+  }, [stageChartOpps]);
 
-  const lineChartData = useMemo(() => {
-    const monthMap = new Map<string, Record<string, number | string>>();
-    const sortMap = new Map<string, number>();
-    filteredOpps.forEach((op) => {
+  // Cumulative line data: filtered by clicked stage (so line updates on stage click)
+  const lineChartOpps = useMemo(() => {
+    if (!clickedStage) return filteredOpps;
+    return filteredOpps.filter((op) => op.stage === clickedStage);
+  }, [filteredOpps, clickedStage]);
+
+  const cumulativeData = useMemo(() => {
+    const monthTotals = new Map<string, { sort: number; amount: number }>();
+    lineChartOpps.forEach((op) => {
       const parsed = parseMonthKey(op.closeDate);
       if (!parsed) return;
       const { label, sort } = parsed;
-      if (!monthMap.has(label)) {
-        monthMap.set(label, { month: label });
-        sortMap.set(label, sort);
-      }
-      const entry = monthMap.get(label)!;
-      entry[op.stage] = ((entry[op.stage] as number) || 0) + op.amount;
+      if (!monthTotals.has(label)) monthTotals.set(label, { sort, amount: 0 });
+      monthTotals.get(label)!.amount += op.amount;
     });
-    return Array.from(monthMap.entries())
-      .sort(([a], [b]) => sortMap.get(a)! - sortMap.get(b)!)
-      .map(([, entry]) => entry);
-  }, [filteredOpps]);
+    const sorted = Array.from(monthTotals.entries()).sort(
+      ([, a], [, b]) => a.sort - b.sort
+    );
+    let cumulative = 0;
+    return sorted.map(([label, { amount }]) => {
+      cumulative += amount;
+      return { month: label, cumulative: Math.round(cumulative) };
+    });
+  }, [lineChartOpps]);
 
-  const activeStages = useMemo(() => {
-    const revenueMap = new Map(revenueByStage.map((r) => [r.stage, r.revenue]));
-    return data.stages
-      .filter((s) => selectedStages.has(s))
-      .sort((a, b) => (revenueMap.get(b) ?? 0) - (revenueMap.get(a) ?? 0));
-  }, [data.stages, selectedStages, revenueByStage]);
-  const isFiltered = selectedStages.size !== data.stages.length;
+  // Table / KPI: both filters applied
+  const tableOpps = useMemo(() => {
+    let opps = filteredOpps;
+    if (clickedStage) opps = opps.filter((op) => op.stage === clickedStage);
+    if (clickedMonth)
+      opps = opps.filter((op) => parseMonthKey(op.closeDate)?.label === clickedMonth);
+    return opps;
+  }, [filteredOpps, clickedStage, clickedMonth]);
+
+  const filteredRevenue = useMemo(
+    () => tableOpps.reduce((sum, op) => sum + op.amount, 0),
+    [tableOpps]
+  );
+
+  const isDropdownFiltered = selectedStages.size !== data.stages.length;
+  const isChartFiltered = !!clickedStage || !!clickedMonth;
+  const isFiltered = isDropdownFiltered || isChartFiltered;
 
   const filteredRevenueFormatted = new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -93,10 +129,36 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
     maximumFractionDigits: 0,
   }).format(filteredRevenue);
 
+  const kpiSubtitle = clickedStage
+    ? `Stage: ${clickedStage}`
+    : clickedMonth
+    ? `Month: ${clickedMonth}`
+    : isDropdownFiltered
+    ? `${selectedStages.size} stage${selectedStages.size !== 1 ? "s" : ""} selected`
+    : "All opportunity stages";
+
   function toggleStage(stage: string, checked: boolean) {
     const next = new Set(selectedStages);
     checked ? next.add(stage) : next.delete(stage);
     setSelectedStages(next);
+    // clear chart filters when dropdown changes
+    setClickedStage(null);
+    setClickedMonth(null);
+  }
+
+  function handleStageClick(stage: string | null) {
+    setClickedStage(stage);
+    if (stage) setClickedMonth(null);
+  }
+
+  function handleMonthClick(month: string | null) {
+    setClickedMonth(month);
+    if (month) setClickedStage(null);
+  }
+
+  function clearChartFilter() {
+    setClickedStage(null);
+    setClickedMonth(null);
   }
 
   return (
@@ -112,9 +174,7 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h18M7 8h10M11 12h2" />
             </svg>
             <span>Stages</span>
-            <span
-              className="text-xs rounded-full px-1.5 py-0.5 font-medium bg-blue-600 text-blue-100"
-            >
+            <span className="text-xs rounded-full px-1.5 py-0.5 font-medium bg-blue-600 text-blue-100">
               {selectedStages.size} / {data.stages.length}
             </span>
             <svg
@@ -131,7 +191,10 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
             <div className="absolute top-10 left-0 z-40 w-56 bg-white border border-slate-200 rounded-xl shadow-lg p-3">
               <div className="flex justify-between mb-2 pb-2 border-b border-slate-100">
                 <button
-                  onClick={() => setSelectedStages(new Set(data.stages))}
+                  onClick={() => {
+                    setSelectedStages(new Set(data.stages));
+                    clearChartFilter();
+                  }}
                   className="text-xs text-indigo-600 hover:underline"
                 >
                   Select all
@@ -165,11 +228,30 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
 
         {isFiltered && (
           <button
-            onClick={() => setSelectedStages(new Set(data.stages))}
+            onClick={() => {
+              setSelectedStages(new Set(data.stages));
+              clearChartFilter();
+            }}
             className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
           >
             Reset filter
           </button>
+        )}
+
+        {isChartFiltered && (
+          <span className="flex items-center gap-1.5 text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-full px-2.5 py-1">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            {clickedStage ?? clickedMonth}
+            <button
+              onClick={clearChartFilter}
+              className="ml-0.5 hover:text-indigo-800"
+              aria-label="Clear chart filter"
+            >
+              ×
+            </button>
+          </span>
         )}
       </div>
 
@@ -178,11 +260,7 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
         <KPICard
           title={isFiltered ? "Filtered Pipeline Revenue" : "Total Pipeline Revenue"}
           value={filteredRevenueFormatted}
-          subtitle={
-            isFiltered
-              ? `${activeStages.length} stage${activeStages.length !== 1 ? "s" : ""} selected`
-              : "All opportunity stages"
-          }
+          subtitle={kpiSubtitle}
           color="green"
         />
         <KPICard
@@ -205,19 +283,34 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
         />
       </section>
 
-      {/* Charts */}
+      {/* Charts — equal thirds */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2">
-          <RevenueChart data={lineChartData} stages={activeStages} />
+        <div>
+          <RevenueChart
+            data={stageData}
+            selectedStage={clickedStage}
+            onStageClick={handleStageClick}
+          />
         </div>
         <div>
-          <LeadStatusChart data={revenueByStage} />
+          <CumulativeLineChart
+            data={cumulativeData}
+            selectedMonth={clickedMonth}
+            onMonthClick={handleMonthClick}
+          />
+        </div>
+        <div>
+          <LeadStatusChart
+            data={stageData}
+            selectedStage={clickedStage}
+            onStageClick={handleStageClick}
+          />
         </div>
       </section>
 
       {/* Opportunities Table */}
       <section>
-        <OpportunitiesTable opportunities={filteredOpps} />
+        <OpportunitiesTable opportunities={tableOpps} />
       </section>
     </main>
   );

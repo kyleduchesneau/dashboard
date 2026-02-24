@@ -7,8 +7,8 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
+  Cell,
 } from "recharts";
 
 const STAGE_COLORS: Record<string, string> = {
@@ -16,14 +16,9 @@ const STAGE_COLORS: Record<string, string> = {
   "Closed Lost": "#ef4444",
   "Finalize/Negotiate": "#6366f1",
   Specification: "#3b82f6",
-  "Estimate/Quote": "#f59e0b",
   Discovery: "#8b5cf6",
   Introduction: "#64748b",
 };
-
-const FALLBACK_COLORS = [
-  "#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#64748b", "#ec4899",
-];
 
 function formatMillions(value: number) {
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
@@ -33,51 +28,60 @@ function formatMillions(value: number) {
 
 export default function RevenueChart({
   data,
-  stages,
+  selectedStage,
+  onStageClick,
 }: {
-  data: Record<string, number | string>[];
-  stages: string[];
+  data: { stage: string; revenue: number }[];
+  selectedStage?: string | null;
+  onStageClick: (stage: string | null) => void;
 }) {
+  const hasFilter = !!selectedStage;
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-5">
       <h2 className="text-base font-semibold text-slate-700 mb-4">
-        Revenue Over Time
+        Revenue by Stage
       </h2>
       <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={data} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+        <BarChart
+          data={data}
+          layout="vertical"
+          margin={{ top: 4, right: 48, left: 0, bottom: 0 }}
+          onClick={(e) => {
+            const stage = e?.activePayload?.[0]?.payload?.stage;
+            if (stage) onStageClick(stage === selectedStage ? null : stage);
+          }}
+          style={{ cursor: "pointer" }}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
           <XAxis
-            dataKey="month"
-            tick={{ fontSize: 11, fill: "#64748b" }}
-            interval="preserveStartEnd"
-          />
-          <YAxis
+            type="number"
             tickFormatter={formatMillions}
             tick={{ fontSize: 11, fill: "#64748b" }}
-            width={60}
+          />
+          <YAxis
+            type="category"
+            dataKey="stage"
+            tick={{ fontSize: 11, fill: "#64748b" }}
+            width={145}
           />
           <Tooltip
-            formatter={(value: number, name: string) => [
+            formatter={(value: number) => [
               `$${value.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
-              name,
+              "Revenue",
             ]}
             contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}
             cursor={{ fill: "#f8fafc" }}
           />
-          <Legend
-            formatter={(value) => (
-              <span className="text-xs text-slate-600">{value}</span>
-            )}
-          />
-          {stages.map((stage, i) => (
-            <Bar
-              key={stage}
-              dataKey={stage}
-              stackId="stack"
-              fill={STAGE_COLORS[stage] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length]}
-              radius={i === stages.length - 1 ? [3, 3, 0, 0] : undefined}
-            />
-          ))}
+          <Bar dataKey="revenue" radius={[0, 3, 3, 0]}>
+            {data.map((entry) => (
+              <Cell
+                key={entry.stage}
+                fill={STAGE_COLORS[entry.stage] ?? "#6366f1"}
+                opacity={hasFilter && selectedStage !== entry.stage ? 0.25 : 1}
+              />
+            ))}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>
