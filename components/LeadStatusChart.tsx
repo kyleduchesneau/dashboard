@@ -128,7 +128,7 @@ export default function LeadStatusChart({
           <Tooltip content={<CustomTooltip />} />
           <Legend
             formatter={(value) => (
-              <span className="text-sm text-slate-600">{value}</span>
+              <span className="text-xs text-slate-600">{value}</span>
             )}
           />
         </PieChart>
